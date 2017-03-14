@@ -75,7 +75,7 @@ class Templite(object):
             if len(buffered) == 1:
                 code.add_line("append_result(%s)" % buffered[0])
             elif len(buffered) > 1:
-                code.add_line("extend_result(%s)" % ', '.join(buffered))
+                code.add_line("extend_result([%s])" % ', '.join(buffered))
             del buffered[:]
 
         ops_stack = []  # 用栈来检查嵌套语法
@@ -123,3 +123,11 @@ class Templite(object):
                     if start_what != end_what:
                         self._syntax_error("Mismatched end tag", end_what)
                     code.dedent()
+                else:
+                    self._syntax_error("Don't understand tag", words[0])
+            else:
+                if token:
+                    buffered.append(repr(token))
+        if ops_stack:
+            self._syntax_error("Unmatched action tag", ops_stack[-1])
+        flush_output()
