@@ -128,6 +128,27 @@ class Templite(object):
             else:
                 if token:
                     buffered.append(repr(token))
-        if ops_stack:
+        if ops_stack:  # 迭代完tokens后栈不为空，说明缺少end标签
             self._syntax_error("Unmatched action tag", ops_stack[-1])
         flush_output()
+
+        # 补充vars_code的内容
+        for var_name in self.all_vars - self.loop_vars:
+            vars_code.add_line('c_%s = context[%r]' % (var_name, var_name))
+
+        # 编译后的函数返回值
+        code.add_line("return ''.join(result)")
+        code.dedent()
+
+        # 获取渲染函数
+        self._render_function = code.get_globals()['render_function']
+
+    def _expr_code(self, expr):
+        """将输入字符串转换成Python代码"""
+        if "|" in expr:
+            pipes = expr.split('|')
+            code = self._expr_code(pipes[0])
+            for func in pipes[1:]:
+                # 将过滤器转化为函数，接收模板变量作为参数
+                self._variable(func, self.all_vars)
+                code = "c_%s(%s)" % (func, code)
